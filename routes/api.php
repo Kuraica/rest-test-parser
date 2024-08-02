@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\ApiController;
+use App\Http\Controllers\ApiDataController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -17,3 +19,9 @@ use Illuminate\Support\Facades\Route;
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
+
+//Route::get('fetch-data', [ApiController::class, 'fetchData']); // for testing
+
+Route::get('/files-and-directories', [ApiDataController::class, 'getFilesAndDirectories']);
+Route::get('/directories', [ApiDataController::class, 'getDirectories']);
+Route::get('/files', [ApiDataController::class, 'getFiles']);

@@ -1,66 +1,108 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Laravel Application for Fetching and Transforming API Data
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+## Project Overview
+This Laravel application is designed to fetch data from the external API endpoint [https://rest-test-eight.vercel.app/api/test](https://rest-test-eight.vercel.app/api/test), transform the data into a specified structure, and store the transformed data into a database. The application provides three endpoints to access the data:
 
-## About Laravel
+1. `/api/files-and-directories` - Parses data from the external API and returns a structured JSON response with all directories and files.
+2. `/api/directories` - Lists only directories in a paginated format.
+3. `/api/files` - Lists only files in a paginated format.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+The data structure transformation is based on the URLs provided by the external API, extracting IP addresses, directories, subdirectories, and files. The transformed data is stored in the database and cached for quick access.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Endpoints
+### `/api/files-and-directories`
+Parses data from the external API endpoint and returns the following structure:
+```json
+{
+  "<IP address>": [
+    {
+      "<directory name>": [
+        {
+          "<sub-directory name>": [
+            "<file name>",
+            "<file name>",
+            "<file name>"
+          ]
+        },
+        {
+          "<sub-directory name>": [
+            "<file name>",
+            "<file name>",
+            "<file name>"
+          ]
+        },
+        "<file name>",
+        "<file name>",
+        "<file name>"
+      ]
+    },
+    {
+      "<directory name>": [
+        "<file name>",
+        "<file name>",
+        "<file name>"
+      ]
+    }
+  ]
+}
+```
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+### `/api/directories`
+Returns a paginated list of directories with a limit of 100 records per page.
 
-## Learning Laravel
+### `/api/files`
+Returns a paginated list of files with a limit of 100 records per page.
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+## Implementation Notes
+The application addresses the problem of large dataset load times and delays from the external API by utilizing a queue system to fetch and process data in the background. The processed data is cached in Redis to provide quick responses to API requests.
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+## Getting Started
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+### Prerequisites
+- Docker
+- Docker Compose
 
-## Laravel Sponsors
+## Installation
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+Clone the repository:
 
-### Premium Partners
+```bash
+git clone https://github.com/Kuraica/rest-test-parser.git
+cd rest-test-parser
+```
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[WebReinvent](https://webreinvent.com/)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Jump24](https://jump24.co.uk)**
-- **[Redberry](https://redberry.international/laravel/)**
-- **[Active Logic](https://activelogic.com)**
-- **[byte5](https://byte5.de)**
-- **[OP.GG](https://op.gg)**
+Build and start the Docker containers:
 
-## Contributing
+```bash
+docker-compose up --build -d
+```
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+Access the application container:
 
-## Code of Conduct
+```bash
+docker-compose exec --user root app bash
+```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+Navigate to the application directory and install dependencies:
 
-## Security Vulnerabilities
+```bash
+cd /var/www
+composer install
+```
+Run tests to ensure everything is set up correctly:
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+```bash
+php artisan test
+```
 
-## License
+Process the API data by dispatching a job to the queue:
+```bash
+php artisan process:apidata https://rest-test-eight.vercel.app/api/test
+```
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+Start the queue worker:
+```bash
+php artisan queue:work --timeout=900 --memory=1024
+```
+
+Feel free to adjust the repository URL and any other details specific to your project setup.

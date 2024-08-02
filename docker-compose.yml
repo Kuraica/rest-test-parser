@@ -1,0 +1,74 @@
+version: '3.8'
+services:
+    app:
+        build:
+            context: .
+            dockerfile: Dockerfile
+        volumes:
+            - .:/var/www
+            - ./docker/php/local.ini:/usr/local/etc/php/conf.d/local.ini
+        networks:
+            - laravel
+
+    webserver:
+        image: nginx:alpine
+        container_name: nginx
+        restart: unless-stopped
+        ports:
+            - "8082:80"  # Promenjen port
+        volumes:
+            - .:/var/www
+            - ./nginx/conf.d:/etc/nginx/conf.d
+        networks:
+            - laravel
+
+    db:
+        image: mysql:5.7
+        volumes:
+            - dbdata:/var/lib/mysql
+        environment:
+            MYSQL_ROOT_PASSWORD: root
+            MYSQL_DATABASE: laravel
+            MYSQL_USER: laravel
+            MYSQL_PASSWORD: laravel
+        ports:
+            - "3306:3306"
+        networks:
+            - laravel
+
+    phpmyadmin:
+        image: phpmyadmin/phpmyadmin
+        links:
+            - db
+        environment:
+            PMA_HOST: db
+            MYSQL_ROOT_PASSWORD: root
+        ports:
+            - "8081:80"
+        networks:
+            - laravel
+
+    redis:
+        image: redis:alpine
+        ports:
+            - "6379:6379"
+        networks:
+            - laravel
+
+    queue:
+        build:
+            context: .
+            dockerfile: Dockerfile
+        command: php artisan queue:work --sleep=3 --tries=3 --timeout=90
+        volumes:
+            - .:/var/www
+        networks:
+            - laravel
+
+volumes:
+    dbdata:
+        driver: local
+
+networks:
+    laravel:
+        driver: bridge
